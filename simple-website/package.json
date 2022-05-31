@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@serverless-components/website": "^0.0.1",
+    "@serverless/compose": "^1.2"
+  }
+}

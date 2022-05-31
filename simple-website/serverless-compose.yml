@@ -1,0 +1,5 @@
+services:
+
+  website:
+    component: '@serverless-components/website'
+    path: public

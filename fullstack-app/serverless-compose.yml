@@ -1,0 +1,15 @@
+services:
+
+  demo-api:
+    path: api
+
+  demo-website:
+    component: '@serverless-components/website'
+    path: react
+    build:
+      # Build React before deploying
+      cmd: npm run build
+      outputDir: build
+      environment:
+        # Inject the URL of our API into our React website
+        REACT_APP_API_URL: ${demo-api.HttpApiUrl}
