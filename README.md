@@ -338,7 +338,7 @@ services:
   # ...
 ```
 
-On the next `serverless deploy`, the configuration above will automatically create an S3 bucket to store the state.
+On the next `serverless deploy`, the configuration above will automatically create an S3 bucket to store the state. The S3 bucket will always be created in `us-east-1` region and will be used by all Compose projects with remote state configured and deployed to the same AWS Account. If you need to use different region, please see **Manual setup** below.
 
 If you want more control, you can also set the following options in the `state` configuration:
 
@@ -351,6 +351,7 @@ state:
   # Use a specific S3 key prefix for objects stored in S3
   prefix: europe-team
 ```
+
 
 ### Manual setup
 
@@ -368,3 +369,23 @@ state:
   # Use a specific S3 key prefix for objects stored in S3 (optional)
   prefix: europe-team
 ```
+
+### Working with multiple projects that use remote state
+
+By default, when a project uses remote state with S3 backend, the state will be stored under `/<stage>/state.json` key. If you deploy two (or more) different Compose projects with remote state enabled to the same stage in the same AWS Account, you will end up in a situation where state will be shared between both projects. It might result in hard to debug errors if services have the same names across projects or even losing state altogether if one of the projects is removed. To avoid such situations, make sure to define unique `prefix` for each of the projects is such situations:
+
+```yaml
+# first/serverless-compose.yml
+state:
+  backend: s3
+  prefix: first-project
+```
+
+```yaml
+# second/serverless-compose.yml
+state:
+  backend: s3
+  prefix: second-project
+```
+
+Using prefix changes the key under which the state is stored to `/<prefix>/<stage>/state.json` which allows to avoid potential conflicts.
