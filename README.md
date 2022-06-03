@@ -338,7 +338,7 @@ services:
   # ...
 ```
 
-On the next `serverless deploy`, the configuration above will automatically create an S3 bucket to store the state. The S3 bucket will always be created in `us-east-1` region and will be used by all Compose projects with remote state configured and deployed to the same AWS Account. If you need to use different region, please see **Manual setup** below.
+On the next `serverless deploy`, the configuration above will automatically create an S3 bucket to store the state. The S3 bucket will always be created in `us-east-1` and will be used by all Compose projects with remote state configured deploying to the same AWS account. If you need to use a different region, please see **Manual setup** below.
 
 If you want more control, you can also set the following options in the `state` configuration:
 
