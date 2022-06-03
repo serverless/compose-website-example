@@ -54,7 +54,7 @@ On `serverless deploy` the website files are uploaded to an S3 bucket. That buck
 
 The first deployment takes care of creating the S3 bucket via **CloudFormation**. The next deployments only take seconds as they only upload the changed files.
 
-When setting up a custom domain however, `serverless deploy` will also set up a CloudFront distribution automatically. That will make the website ready for production with HTTPS, CDN caching at the edge, as well as automatic security HTTP headers.
+When setting up a custom domain however, `serverless deploy` will also set up a CloudFront distribution automatically. That will make the website ready for production with HTTPS, CDN caching at the edge, as well as automatic security HTTP headers. On deployment, the CDN cache will automatically be cleared.
 
 *Note: server-side rendering (SSR) is not supported (yet). Let us know if you are interested!*
 
@@ -284,6 +284,30 @@ services:
 
 The first domain in the list will be considered the main domain. In this case, `my-website.com` will redirect to `www.my-website.com`.
 
+#### Region
+
+The `region` option lets us deploy the S3 bucket to a specific region:
+
+```yaml
+services:
+  website:
+    # ...
+    region: eu-west-1
+```
+
+Note that when using a custom domain, the website is served behind [the CloudFront CDN](https://aws.amazon.com/cloudfront/), which caches the website all over the world.
+
+#### Profile
+
+Use the `profile` option to deploy the website with a specific AWS profile:
+
+```yaml
+services:
+  website:
+    # ...
+    profile: production
+```
+
 #### Allow iframes
 
 When deploying to production with a custom domain, recommended HTTP security headers are added by default to the website. That means that [for security reasons](https://scotthelme.co.uk/hardening-your-http-response-headers/#x-frame-options), the website cannot be embedded in an iframe.
@@ -299,3 +323,48 @@ services:
 ```
 
 ## Sharing Compose state
+
+Even though CloudFormation is used for deploying, Compose also stores deployment state and outputs. That allows accelerating future deployments by remembering the state of the previous deployment.
+
+This state is stored by default in the `.serverless/` directory, but it can also be stored remotely, which **is recommended in a team environment**.
+
+The simplest solution to store the state remotely is via the `state: s3` autoconfiguration in `serverless-compose.yml`:
+
+```yaml
+# serverless-compose.yml
+state: s3
+
+services:
+  # ...
+```
+
+On the next `serverless deploy`, the configuration above will automatically create an S3 bucket to store the state.
+
+If you want more control, you can also set the following options in the `state` configuration:
+
+```yaml
+# serverless-compose.yml
+state:
+  backend: s3
+  # Use a specific AWS profile to deploy and access the state bucket
+  profile: infra
+  # Use a specific S3 key prefix for objects stored in S3
+  prefix: europe-team
+```
+
+### Manual setup
+
+For teams that want complete control, it is possible to manually create the S3 bucket containing the state.
+
+Once it is created, set the name of the bucket in the `existingBucket` key:
+
+```yaml
+# serverless-compose.yml
+state:
+  backend: s3
+  existingBucket: my-serverless-state-storage
+  # Use a specific AWS profile to deploy and access the state bucket (optional)
+  profile: infra
+  # Use a specific S3 key prefix for objects stored in S3 (optional)
+  prefix: europe-team
+```
