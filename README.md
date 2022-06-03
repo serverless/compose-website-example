@@ -372,7 +372,9 @@ state:
 
 ### Working with multiple projects that use remote state
 
-By default, when a project uses remote state with S3 backend, the state will be stored under `/<stage>/state.json` key. If you deploy two (or more) different Compose projects with remote state enabled to the same stage in the same AWS Account, you will end up in a situation where state will be shared between both projects. It might result in hard to debug errors if services have the same names across projects or even losing state altogether if one of the projects is removed. To avoid such situations, make sure to define unique `prefix` for each of the projects is such situations:
+By default, when a project uses remote state with S3, the state is stored under the `/<stage>/state.json` key. If you deploy two (or more) different Compose projects with remote state enabled, to the same stage, in the same AWS account, the state will be shared between both projects. It might result in errors if some services have the same names across projects, or even losing state altogether if one of the projects is removed.
+
+To avoid this, make sure to define a unique state `prefix` for each project:
 
 ```yaml
 # first/serverless-compose.yml
