@@ -11,7 +11,7 @@ Serverless Framework can deploy multiple services via a `serverless-compose.yml`
 
 The `serverless-compose.yml` file can now also deploy new types of services, called *components*.
 
-### Deploying websites
+## Deploying websites
 
 The first component available is "website", which deploys frontend websites like React or VueJS. To use it, install it via NPM:
 
@@ -45,7 +45,7 @@ services:
   # This is a website component
   website:
     component: '@serverless-components/website'
-    path: public
+    path: website
 ```
 
 ### How it works
@@ -56,7 +56,7 @@ The first deployment takes care of creating the S3 bucket via **CloudFormation**
 
 When setting up a custom domain however, `serverless deploy` will also set up a CloudFront distribution automatically. That will make the website ready for production with HTTPS, CDN caching at the edge, as well as automatic security HTTP headers.
 
-Note: server-side rendering (SSR) is not supported (yet). Let us know if you are interested!
+*Note: server-side rendering (SSR) is not supported (yet). Let us know if you are interested!*
 
 ### Building the website
 
@@ -67,7 +67,7 @@ The website component can optionally build the website before deploying. This is
 services:
   website:
     component: '@serverless-components/website'
-    path: my-website
+    path: website
     build:
       cmd: npm run build
       outputDir: dist
@@ -127,7 +127,7 @@ services:
 
 #### NextJS
 
-NextJS can be deployed [without SSR, as a static website](https://nextjs.org/docs/advanced-features/static-html-export):
+NextJS can be deployed [without SSR](https://nextjs.org/docs/advanced-features/static-html-export):
 
 ```yaml
 services:
@@ -141,6 +141,161 @@ services:
 
 ### Output variables
 
+Compose lets us use [service outputs using variables](https://www.serverless.com/framework/docs/guides/compose#service-dependencies-and-variables). Website components expose the following outputs:
+
+- `url`: the URL of the website
+- `domain`: the domain of the website
+- `bucketName`: the name of the bucket created to host the website
+- `cname`: domain to point custom domains to in DNS records (when using a custom domain)
+- `distributionId`: ID of the CloudFront distribution (when using a custom domain)
+
+You can preview these outputs by running `serverless outputs`.
+
+Here is an example how website outputs can be used, for example to inject the website URL in a serverless service:
+
+```yaml
+services:
+  website:
+    component: @serverless-components/website
+    path: website
+
+  api: # Serverless Framework service
+    path: api
+    params:
+      websiteUrl: ${website.url}
+```
+
 ### Configuration reference
+
+```yaml
+services:
+  website:
+    component: @serverless-components/website
+    path: website
+    domain: my-website.com
+    certificate: arn:aws:acm:us-east-1:1234567890:certificate/0a28e63d-d3a9-14347bfe8123
+    redirectToMainDomain: true
+    build:
+      cmd: npm run build
+      outputDir: build
+      environment:
+        FOO: bar
+    security:
+      allowIframe: true
+```
+
+#### Path
+
+```yaml
+services:
+  website:
+    component: @serverless-components/website
+    path: website
+```
+
+The `path` option should point to the directory containing the website. You can use `path: .` to point to the current directory.
+
+All files in that directory will be deployed and made available publicly, unless you configure a `build` step (see below).
+
+#### Build
+
+Compose can optionally build the website before deploying. This is configured via the `build` option:
+
+```yaml
+services:
+  website:
+    component: @serverless-components/website
+    path: website
+    build:
+      cmd: npm run build
+      outputDir: build
+      environment:
+        FOO: bar
+```
+
+- `cmd`: the CLI command that builds the website (will run in the `path` directory)
+- `outputDir`: the directory containing the built website, which will be uploaded instead of `path` (relative to the `path` directory)
+- `environment`: key-value of environment variables to set in the build process
+
+#### Custom domains
+
+It is possible to set a custom domain via the `domain` and `certificate` options:
+
+```yaml
+services:
+  website:
+    # ...
+    domain: my-website.com
+    # ARN of an ACM certificate for the domain, registered in us-east-1
+    certificate: arn:aws:acm:us-east-1:1234567890:certificate/0a28e63d-d3a9-14347bfe8123
+```
+
+With the configuration above, running `serverless deploy` will set up a CloudFront CDN distribution, configured with the custom domain `my-website.com`, using the provided HTTPS certificate.
+
+After running `serverless outputs`, you should see the following output in the terminal:
+
+```
+website:
+  ...
+  url: https://my-website.com
+  cname: s13hocjp.cloudfront.net
+```
+
+Configure your DNS records to create a CNAME entry that points your domain to the `xxx.cloudfront.net` domain. After a few minutes/hours, the domain should be available.
+
+##### HTTPS certificate
+
+To create an HTTPS certificate:
+
+- Open [the ACM Console](https://console.aws.amazon.com/acm/home?region=us-east-1#/wizard/) in the `us-east-1` region (CDN certificates **must be** in us-east-1, regardless of where your application is hosted)
+- Click "_Request a new certificate_", add your domain name and click "Next"
+- Choose a domain validation method:
+    - Domain validation will require you to add CNAME entries to your DNS configuration
+    - Email validation will require you to click a link in an email sent to `admin@your-domain.com`
+
+After the certificate is created and validated, the ARN of the certificate will be displayed.
+
+##### Multiple domains
+
+It is possible to set up multiple domains:
+
+```yaml
+services:
+  website:
+    # ...
+    domain:
+      - my-website.com
+      - app.my-website.com
+```
+
+##### Redirect all domains to a single one
+
+It is sometimes necessary to redirect all domains to a single one. A common example is to redirect the root domain to the `www` version.
+
+```yaml
+services:
+  website:
+    # ...
+    domain:
+      - www.my-website.com
+      - my-website.com
+    redirectToMainDomain: true
+```
+
+The first domain in the list will be considered the main domain. In this case, `my-website.com` will redirect to `www.my-website.com`.
+
+#### Allow iframes
+
+When deploying to production with a custom domain, recommended HTTP security headers are added by default to the website. That means that [for security reasons](https://scotthelme.co.uk/hardening-your-http-response-headers/#x-frame-options), the website cannot be embedded in an iframe.
+
+To allow embedding the website in an iframe, enable it explicitly:
+
+```yaml
+services:
+  website:
+    # ...
+    security:
+      allowIframe: true
+```
 
 ## Sharing Compose state
